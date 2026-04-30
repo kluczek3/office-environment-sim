@@ -30,6 +30,19 @@ class CognitivePlanner:
         )
         user_prompt = "Return the micro actions strictly as JSON list."
         res = await self.llm_provider.get_completion(sys_prompt, user_prompt, require_json=True)
+        # Update monitoring narrative based on the new breakdown
+        self.narrative_summary = f"Currently executing: {macro_block}"
+        return res
+
+    async def self_monitor(self) -> str:
+        """Asynchronous self-monitoring to maintain a narrative summary of recent events."""
+        if not self.memory_stream or not hasattr(self, 'narrative_summary'):
+            return "No narrative context"
+        sys_prompt = f"You are agent {self.agent_id}. Your current main goal is: {self.narrative_summary}. Synthesize recent events to ensure you stay on task."
+        user_prompt = "Provide a 1-sentence internal monologue of your status. Output JSON with a 'status' key."
+        res = await self.llm_provider.get_completion(sys_prompt, user_prompt, require_json=True)
+        if isinstance(res, dict) and 'status' in res:
+            self.narrative_summary = res['status']
         return res
 
     async def evaluate_stimulus(self, stimulus_data: dict, spatial_modifiers: list) -> str:

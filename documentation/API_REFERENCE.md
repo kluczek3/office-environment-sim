@@ -31,9 +31,13 @@ Wysyłane, gdy agent wejdzie do strefy o szczególnych zasadach (np. kuchnia, sa
 
 #### B. Interakcja z otoczeniem lub innym agentem (`interaction`)
 Wysyłane, gdy zachodzi zdarzenie bodźcowe wymagające oceny pod kątem włączenia się do interakcji lub kontynuowania pracy.
-*   **Payload `data`**: Opis bodźca, kto zapoczątkował, ewentualnie przekazywana wiadomość / plotka. Może również zawierać aktualne `modifiers` fizycznego miejsca.
+*   **Payload `data`**: Opis bodźca, kto zapoczątkował, ewentualnie przekazywana wiadomość / plotka. Może również zawierać aktualne `modifiers` fizycznego miejsca oraz `shock_value` (od 0 do 10) wpływające na spadek produktywności.
 
-#### C. Koniec skali czasu (`day_ended`)
+#### C. Początek skali czasu (`day_started`)
+Sygnał czasowy, by agent otrzymał plan dnia (Top-down planning). 
+*   **Payload `data`**: Puste. Obiekt zwrotny z backendu w `decision` rzuci wygenerowany `macro_plan` i `current_micro_plan`.
+
+#### D. Koniec skali czasu (`day_ended`)
 Sygnał czasowy, który informuje backend, że dany agent kończy "cykl" i powinien podsumować wspomnienia (Summarize and Forget).
 *   **Payload `data`**: Opcjonalne statystyki na koniec dnia.
 

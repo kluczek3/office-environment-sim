@@ -12,8 +12,8 @@ class SimulationOrchestrator:
 
     def process_event(self, event_type: str, agent_id: str, data: dict):
         """Main event loop logic to coordinate memory logging and LLM triggers."""
-        # E.g. Check if this is a high-cognitive-load rumor
-        if event_type == "RUMOR_RECEIVED":
+        # Check if this interaction contains a high-cognitive-load rumor
+        if event_type == "interaction" and "shock_value" in data:
             cognitive_load = float(data.get("shock_value", 0)) * 2
             self.update_productivity(cognitive_load)
             return {"status": "requires_evaluation", "load": cognitive_load}
