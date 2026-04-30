@@ -30,7 +30,7 @@ The agent's "brain" is based on the centralized use of an LLM, integrated with a
 
 1.  **Memory Stream:** A comprehensive database recording all agent experiences in natural language. The architecture is hierarchical—divided into working memory (short-term, e.g., *recentmem*) for the current context, and long-term memory (*longmem*).
 2.  **Reflection Module:** A mechanism that periodically synthesizes accumulated memories into higher-order, abstract conclusions (so-called *reflection trees*). It also utilizes the *Summarize-and-Forget* mechanism—before moving to long-term memory, memories are grouped semantically, summarized, and repetitive events are forgotten, optimizing the vector database. Implemented by grouping recent docs on `day_ended` trigger.
-3.  **Self-monitoring:** An asynchronous process maintaining a narrative summary of recent events relevant to the agent's main goal. This prevents "losing the thread" while executing time-distributed tasks.
+3.  **Self-monitoring:** An asynchronous process maintaining a narrative summary of recent events relevant to the agent's main goal. This prevents "losing the thread" while executing time-distributed tasks. It is implemented inherently within the `planner.py` through sequential synthesis of recent actions.
 4.  **Planning and Action Module:** A component that translates the agent's knowledge, needs, and LLM guidelines into specific, sequential animation calls and pathfinding in the Unity engine.
 
 ## 5. Decision-Making Mechanics and Productivity

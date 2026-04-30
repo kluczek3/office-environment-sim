@@ -57,7 +57,9 @@ class ConnectionManager:
         agent_id = self.active_connections.get(websocket)
         if agent_id:
             orchestrator.remove_agent(agent_id)
-            # Optionally remove from active_planners, or keep for persistence
+            # Clean up active planners to prevent memory leak and properly teardown
+            if agent_id in active_planners:
+                del active_planners[agent_id]
         if websocket in self.active_connections:
             del self.active_connections[websocket]
 
@@ -96,6 +98,17 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Route events to the planner or basic handling
                 if event_type == "spatial_trigger":
                     response = {"status": "processed", "action": "update_modifiers", "agent_id": agent_id, **orchestrator_result}
+                elif event_type == "day_started":
+                    if planner:
+                        macro_plan = await planner.generate_daily_plan()
+                        if isinstance(macro_plan, list) and len(macro_plan) > 0:
+                            micro_plan = await planner.breakdown_plan(macro_plan[0])
+                        else:
+                            micro_plan = []
+                        decision = {"macro_plan": macro_plan, "current_micro_plan": micro_plan}
+                    else:
+                        decision = {}
+                    response = {"status": "processed", "action": "day_started", "agent_id": agent_id, "decision": decision, **orchestrator_result}
                 elif event_type == "day_ended":
                     if planner:
                          # Trigger reflection on day end
