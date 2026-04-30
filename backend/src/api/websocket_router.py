@@ -10,7 +10,16 @@ import os
 
 router = APIRouter()
 orchestrator = SimulationOrchestrator()
-llm_provider = LLMProvider()
+
+LOCAL_MODEL = True
+
+if LOCAL_MODEL:
+    llm_provider = LLMProvider(model_name="llama3")
+else:
+    llm_provider = LLMProvider()
+    openai_key = os.getenv("OPENAI_API_KEY", "API_KEY")
+    llm_provider.switch_to_cloud(provider="openai", api_key=openai_key)
+
 global_memory_stream = MemoryStream()
 active_planners: Dict[str, CognitivePlanner] = {}
 
