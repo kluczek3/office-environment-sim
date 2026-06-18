@@ -5007,6 +5007,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1083615009476758916}
+  - component: {fileID: 163089589900097787}
   m_Layer: 0
   m_Name: Workstation_Prefab
   m_TagString: Untagged
@@ -5038,6 +5039,19 @@ Transform:
   - {fileID: 1244932003998123353}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &163089589900097787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3851710408900538217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3130d8f47dbb54948b078e5982e66822, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Workplace
+  chair: {fileID: 3157763314959989155}
 --- !u!1 &4086839165764970586
 GameObject:
   m_ObjectHideFlags: 0
@@ -7243,3 +7257,14 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5606062185701507879, guid: 8b572f78ca76b4eeb9d3bab9ee50f626, type: 3}
   m_PrefabInstance: {fileID: 6668239869131605630}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &3157763314959989155 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8599898185518612445, guid: 8b572f78ca76b4eeb9d3bab9ee50f626, type: 3}
+  m_PrefabInstance: {fileID: 6668239869131605630}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67c3905ef46584c6a8faa45b0c38d942, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OfficeChair

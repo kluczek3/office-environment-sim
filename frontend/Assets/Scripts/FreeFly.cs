@@ -1,23 +1,30 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // Dodajemy to!
+using UnityEngine.InputSystem;
 
-public class FreeFly : MonoBehaviour {
+public class FreeFly : MonoBehaviour 
+{
     public float speed = 10f;
     public float sensitivity = 0.2f;
 
-    void Update() {
-        // Obrót myszką (New Input System)
+    void Update() 
+    {
+        if (QAInterfaceManager.Instance != null && QAInterfaceManager.Instance.IsPanelActive)
+        {
+            return;
+        }
+
         var mouse = Mouse.current;
-        if (mouse != null && mouse.rightButton.isPressed) { // Obrót tylko gdy trzymasz PPM
+        if (mouse != null && mouse.rightButton.isPressed) 
+        { 
             Vector2 delta = mouse.delta.ReadValue();
             float rotX = transform.localEulerAngles.y + delta.x * sensitivity;
             float rotY = transform.localEulerAngles.x - delta.y * sensitivity;
             transform.localEulerAngles = new Vector3(rotY, rotX, 0);
         }
-
-        // Ruch WSAD (New Input System)
+        
         var kb = Keyboard.current;
-        if (kb != null) {
+        if (kb != null) 
+        {
             Vector3 move = Vector3.zero;
             if (kb.wKey.isPressed) move += transform.forward;
             if (kb.sKey.isPressed) move -= transform.forward;
