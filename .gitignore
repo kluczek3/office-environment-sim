@@ -1,3 +1,4 @@
+# macOS System Files
 # Environments
 .env
 .venv
@@ -69,9 +70,66 @@ cover/
 
 # OS generated files
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+*.swp
+
+# Unity
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
+
+*.log
+**/sysinfo.txt
+**/mono_crash.*
+
+**/ExportedObj/
+**/.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.DotSettings.user
+**/.vs/
+**/.gradle/
+
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta
+*.app
+
+**/[Aa]ssets/Unity.VisualScripting.Generated/
+**/[Aa]ssets/StreamingAssets/aa/*
+**/[Aa]ssets/AddressableAssetsData/*/*.bin*
+**/[Aa]ssets/Addressables_Temp*
+**/[Aa]ssets/[Ss]ceneDependencyCache*
+
 ehthumbs.db
 Thumbs.db
