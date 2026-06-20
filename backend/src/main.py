@@ -29,7 +29,7 @@ async def seed_agents():
     if not os.path.exists(profile_path):
         return {"status": "error", "message": "profiles.json not found."}
         
-    with open(profile_path, "r", encoding="utf-8") as f:
+    with open(profile_path, "r", encoding="utf-8-sig") as f:
         profiles_data = json.load(f)
         
     seeded_agents = []

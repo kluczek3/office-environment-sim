@@ -2,7 +2,7 @@ import json
 import os
 from typing import Dict, List, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from pydantic import ValidationError
+from pydantic import ValidationError, TypeAdapter
 
 from src.orchestrator.simulation_state import SimulationOrchestrator
 from src.agent.planner import CognitivePlanner
@@ -45,7 +45,7 @@ def load_agent_profile(agent_id: str) -> Optional[AgentProfile]:
         config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config", "profiles.json")
         if not os.path.exists(config_path):
             return None
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
             prof_data = data.get(agent_id)
             if prof_data:
@@ -55,6 +55,24 @@ def load_agent_profile(agent_id: str) -> Optional[AgentProfile]:
         print(f"⚠️ Failed to load profile for {agent_id}: {e}")
         return None
 
+def save_agent_profile(agent_id: str, profile: AgentProfile):
+    """Saves updated agent personality and relationships to the configuration file."""
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config", "profiles.json")
+        if not os.path.exists(config_path):
+            print(f"⚠️ Could not find config file: {config_path}")
+            return
+            
+        with open(config_path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+            
+        data[agent_id] = profile.model_dump()
+        
+        with open(config_path, "w", encoding="utf-8-sig") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+            
+    except Exception as e:
+        print(f"⚠️ Failed to save profile for {agent_id}: {e}")
 
 # ==========================================
 # CONNECTION MANAGER
@@ -107,7 +125,8 @@ async def process_incoming_message(raw_json: str):
     """Parses incoming JSON and routes it to the appropriate handler based on event type."""
     try:
         # Pydantic magically validates and instantiates the correct event class
-        event = IncomingEvent.model_validate_json(raw_json)
+        adapter = TypeAdapter(IncomingEvent)
+        event = adapter.validate_json(raw_json)
         
         # Route the event
         if isinstance(event, InitEventRequest):
@@ -133,6 +152,8 @@ async def process_incoming_message(raw_json: str):
 async def handle_day_started(event: InitEventRequest):
     """Handles simulation initialization, instantiating planners and agents."""
     print(f"🌅 Day started! Registered agents: {len(event.data.agents)}")
+    
+    orchestrator.setup_environment(event.data.model_dump())
     
     # Process through Orchestrator
     orchestrator.process_event(
@@ -173,9 +194,7 @@ async def handle_question(event: QuestionEventRequest):
     answer_text = "I have no brain initialized to answer this!"
 
     if planner:
-        # TODO: Here you will integrate the planner's QA generation logic
-        # e.g., answer_text = await planner.answer_question(question)
-        answer_text = f"My localized LLM will process: '{question}' based on my MemoryStream."
+        answer_text = await planner.answer_question(question)
     
     response = BackendResponse(
         type="qa_response",
@@ -196,31 +215,47 @@ async def handle_action_request(event: ActionRequestEvent):
 
     if planner:
         # Process context through orchestrator
-
-        available_targets = ["boss_chair_0", "office_chair_1", "chill_0", "conference_0"] # MOCK
-
         orchestrator.process_event(
             event_type=event.type,
             agent_id=agent_id,
             data=event.data if event.data else {}
         )
 
+        available_targets = orchestrator.get_available_targets()
+        if not available_targets:
+             available_targets = ["spawn_point"]
+
         current_loc = event.data.get("current_location", "unknown_location") if event.data else "spawn_point"
+        current_time = event.data.get("current_time", "09:00") if event.data else "09:00"
+        co_located_agents = orchestrator.update_agent_location(agent_id, current_loc)
+        
+        if co_located_agents and planner.profile:
+            for other_agent in co_located_agents:
+                # Zainicjuj relację, jeśli wcześniej się nie znali
+                if other_agent not in planner.profile.relationships:
+                    from src.api.schemas import AgentRelationship
+                    planner.profile.relationships[other_agent] = AgentRelationship(target_agent_id=other_agent, trust_level=0.5)
+                
+                rel = planner.profile.relationships[other_agent]
+                
+                if rel.trust_level < 1.0:
+                    rel.trust_level = min(1.0, rel.trust_level + 0.05)
+                    rel.interaction_count += 1
+                    print(f"🤝 Interaction! {agent_id} spends time with {other_agent} in zone {current_loc}. Trust level: {rel.trust_level:.2f}")
+            
+            save_agent_profile(agent_id, planner.profile)
+
+        agent_role = planner.profile.role if planner.profile and hasattr(planner.profile, 'role') else "Worker"
+        
+        active_event = orchestrator.get_active_global_event(agent_id, agent_role, current_time)
 
         commands_list = await planner.determine_next_actions(
             current_location=current_loc, 
-            available_targets=available_targets
+            available_targets=available_targets,
+            current_time=current_time,
+            global_event=active_event
         )
         
-        # Mocking the action for now to ensure Unity compatibility
-        commands_list.append(
-            NetworkCommand(
-                type="Idle",
-                target_id="",
-                duration=3.0,
-                thought="Thinking about my next action..."
-            )
-        )
     else:
         commands_list.append(NetworkCommand(type="Idle", target_id="", duration=3.0, thought="No brain found."))
 
