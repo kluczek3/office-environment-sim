@@ -1,15 +1,31 @@
 import json
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import os
 from typing import Dict, List, Optional
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
+
 from src.orchestrator.simulation_state import SimulationOrchestrator
 from src.agent.planner import CognitivePlanner
 from src.llm.provider import LLMProvider
-from src.api.schemas import AgentProfile
 from src.agent.memory_stream import MemoryStream
-import os
+
+# Importing our newly defined schemas
+from src.api.schemas import (
+    AgentProfile,
+    IncomingEvent,
+    InitEventRequest,
+    QuestionEventRequest,
+    ActionRequestEvent,
+    BackendResponse,
+    NetworkCommand
+)
 
 router = APIRouter()
 orchestrator = SimulationOrchestrator()
+
+# ==========================================
+# MODEL & SYSTEM INITIALIZATION
+# ==========================================
 
 LOCAL_MODEL = True
 
@@ -24,6 +40,7 @@ global_memory_stream = MemoryStream()
 active_planners: Dict[str, CognitivePlanner] = {}
 
 def load_agent_profile(agent_id: str) -> Optional[AgentProfile]:
+    """Loads agent personality and profile from configuration file."""
     try:
         config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config", "profiles.json")
         if not os.path.exists(config_path):
@@ -34,104 +51,182 @@ def load_agent_profile(agent_id: str) -> Optional[AgentProfile]:
             if prof_data:
                 return AgentProfile(**prof_data)
         return None
-    except Exception:
+    except Exception as e:
+        print(f"⚠️ Failed to load profile for {agent_id}: {e}")
         return None
 
+
+# ==========================================
+# CONNECTION MANAGER
+# ==========================================
+
 class ConnectionManager:
+    """Manages global WebSocket connections with the Unity client."""
     def __init__(self):
-        # We store the associated agent_id with each websocket connection to handle disconnects
-        self.active_connections: Dict[WebSocket, Optional[str]] = {}
+        self.active_connections: List[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections[websocket] = None
-
-    def bind_agent(self, websocket: WebSocket, agent_id: str):
-        self.active_connections[websocket] = agent_id
-        orchestrator.add_agent(agent_id)
-        if agent_id not in active_planners:
-            profile = load_agent_profile(agent_id)
-            active_planners[agent_id] = CognitivePlanner(agent_id, llm_provider, profile=profile, memory_stream=global_memory_stream)
+        self.active_connections.append(websocket)
+        print("🟢 Unity simulation connected successfully!")
 
     def disconnect(self, websocket: WebSocket):
-        agent_id = self.active_connections.get(websocket)
-        if agent_id:
-            orchestrator.remove_agent(agent_id)
-            # Clean up active planners to prevent memory leak and properly teardown
-            if agent_id in active_planners:
-                del active_planners[agent_id]
         if websocket in self.active_connections:
-            del self.active_connections[websocket]
+            self.active_connections.remove(websocket)
+            print("🔴 Unity simulation disconnected.")
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections.keys():
-            await connection.send_text(message)
+    async def broadcast_response(self, response: BackendResponse):
+        """Broadcasts a Pydantic response object as JSON to all active Unity instances."""
+        json_data = response.model_dump_json()
+        for connection in self.active_connections:
+            await connection.send_text(json_data)
 
 manager = ConnectionManager()
+
+
+# ==========================================
+# ROUTER & EVENT LOOP
+# ==========================================
 
 @router.websocket("/ws/simulation")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
-            # Parse Unity events
-            try:
-                payload = json.loads(data)
-                event_type = payload.get("type", "unknown")
-                agent_id = payload.get("agent_id")
-                event_data = payload.get("data", {})
-                
-                if agent_id:
-                    manager.bind_agent(websocket, agent_id)
-                
-                # Forward to Orchestrator based on the request
-                orchestrator_result = orchestrator.process_event(
-                    event_type=event_type, 
-                    agent_id=agent_id, 
-                    data=event_data
-                )
-                
-                # Retrieve the cognitive planner for the agent
-                planner = active_planners.get(agent_id)
-
-                # Route events to the planner or basic handling
-                if event_type == "spatial_trigger":
-                    response = {"status": "processed", "action": "update_modifiers", "agent_id": agent_id, **orchestrator_result}
-                elif event_type == "day_started":
-                    if planner:
-                        macro_plan = await planner.generate_daily_plan()
-                        if isinstance(macro_plan, list) and len(macro_plan) > 0:
-                            micro_plan = await planner.breakdown_plan(macro_plan[0])
-                        else:
-                            micro_plan = []
-                        decision = {"macro_plan": macro_plan, "current_micro_plan": micro_plan}
-                    else:
-                        decision = {}
-                    response = {"status": "processed", "action": "day_started", "agent_id": agent_id, "decision": decision, **orchestrator_result}
-                elif event_type == "day_ended":
-                    if planner:
-                         # Trigger reflection on day end
-                         await planner.memory_stream.summarize_and_forget(agent_id, llm_provider)
-                    response = {"status": "processed", "action": "reflection_triggered", "agent_id": agent_id}
-                elif event_type == "interaction":
-                    if planner:
-                        # Evaluate stimulus through LLM when there's an interaction
-                        spatial_modifiers = event_data.get("modifiers", [])
-                        plan_result = await planner.evaluate_stimulus(event_data, spatial_modifiers)
-                        try:
-                            decision = json.loads(plan_result)
-                        except json.JSONDecodeError:
-                            decision = {"raw": plan_result}
-                    else:
-                        decision = {}
-                        
-                    response = {"status": "processed", "action": "evaluate_stimulus", "agent_id": agent_id, "decision": decision, **orchestrator_result}
-                else:
-                    response = {"status": "received", "event": payload, **orchestrator_result}
-
-                await manager.broadcast(json.dumps(response))
-            except json.JSONDecodeError:
-                await websocket.send_text(json.dumps({"error": "Invalid format"}))
+            raw_data = await websocket.receive_text()
+            await process_incoming_message(raw_data)
+            
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+    except Exception as e:
+        print(f"⚠️ Unexpected error in websocket main loop: {e}")
+        manager.disconnect(websocket)
+
+
+async def process_incoming_message(raw_json: str):
+    """Parses incoming JSON and routes it to the appropriate handler based on event type."""
+    try:
+        # Pydantic magically validates and instantiates the correct event class
+        event = IncomingEvent.model_validate_json(raw_json)
+        
+        # Route the event
+        if isinstance(event, InitEventRequest):
+            await handle_day_started(event)
+            
+        elif isinstance(event, QuestionEventRequest):
+            await handle_question(event)
+            
+        elif isinstance(event, ActionRequestEvent):
+            await handle_action_request(event)
+
+    except ValidationError as e:
+        print("❌ Data validation error (Mismatch with C# contract):")
+        print(e.json())
+    except Exception as e:
+        print(f"❌ Error processing message: {e}")
+
+
+# ==========================================
+# EVENT HANDLERS
+# ==========================================
+
+async def handle_day_started(event: InitEventRequest):
+    """Handles simulation initialization, instantiating planners and agents."""
+    print(f"🌅 Day started! Registered agents: {len(event.data.agents)}")
+    
+    # Process through Orchestrator
+    orchestrator.process_event(
+        event_type=event.type,
+        agent_id=event.agent_id,
+        data=event.data.model_dump()
+    )
+
+    # Initialize planners for all agents sent by Unity
+    for agent_info in event.data.agents:
+        agent_id = agent_info.agentId
+        
+        if agent_id not in active_planners:
+            orchestrator.add_agent(agent_id)
+            profile = load_agent_profile(agent_id)
+            
+            # Create a localized "brain" for each agent
+            active_planners[agent_id] = CognitivePlanner(
+                agent_id=agent_id, 
+                llm_provider=llm_provider, 
+                profile=profile, 
+                memory_stream=global_memory_stream
+            )
+            print(f"🧠 Cognitive Planner initialized for: {agent_id}")
+
+    # Note: We do not send commands back immediately on day_started.
+    # We wait for agents to request actions once they spawn.
+
+
+async def handle_question(event: QuestionEventRequest):
+    """Handles external QA requests directed at a specific agent."""
+    target_id = event.data.targetAgentId
+    question = event.data.question
+    
+    print(f"💬 Question to agent [{target_id}]: {question}")
+    
+    planner = active_planners.get(target_id)
+    answer_text = "I have no brain initialized to answer this!"
+
+    if planner:
+        # TODO: Here you will integrate the planner's QA generation logic
+        # e.g., answer_text = await planner.answer_question(question)
+        answer_text = f"My localized LLM will process: '{question}' based on my MemoryStream."
+    
+    response = BackendResponse(
+        type="qa_response",
+        agent_id=target_id,
+        answer=answer_text,
+        commands=[]
+    )
+    await manager.broadcast_response(response)
+
+
+async def handle_action_request(event: ActionRequestEvent):
+    """Handles a request from an agent looking for their next task/command."""
+    agent_id = event.agent_id
+    print(f"🤖 Agent [{agent_id}] requests new commands.")
+    
+    planner = active_planners.get(agent_id)
+    commands_list = []
+
+    if planner:
+        # Process context through orchestrator
+
+        available_targets = ["boss_chair_0", "office_chair_1", "chill_0", "conference_0"] # MOCK
+
+        orchestrator.process_event(
+            event_type=event.type,
+            agent_id=agent_id,
+            data=event.data if event.data else {}
+        )
+
+        current_loc = event.data.get("current_location", "unknown_location") if event.data else "spawn_point"
+
+        commands_list = await planner.determine_next_actions(
+            current_location=current_loc, 
+            available_targets=available_targets
+        )
+        
+        # Mocking the action for now to ensure Unity compatibility
+        commands_list.append(
+            NetworkCommand(
+                type="Idle",
+                target_id="",
+                duration=3.0,
+                thought="Thinking about my next action..."
+            )
+        )
+    else:
+        commands_list.append(NetworkCommand(type="Idle", target_id="", duration=3.0, thought="No brain found."))
+
+    response = BackendResponse(
+        type="commands",
+        agent_id=agent_id,
+        commands=commands_list
+    )
+    await manager.broadcast_response(response)

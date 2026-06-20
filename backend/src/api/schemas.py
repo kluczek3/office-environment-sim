@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List, Literal, Union, Any
+
 
 class AgentRelationship(BaseModel):
     target_agent_id: str
@@ -22,14 +23,52 @@ class AgentProfile(BaseModel):
     needs: AgentNeeds = Field(default_factory=AgentNeeds)
     relationships: Dict[str, AgentRelationship] = Field(default_factory=dict)
 
-class AgentAction(BaseModel):
-    agent_id: str
-    action_type: str
-    target: Optional[str] = None
-    parameters: Optional[Dict[str, Any]] = None
 
-class UnityEvent(BaseModel):
-    type: str
+# --- FRONTEND -> BACKEND ---
+
+class AgentInitInfo(BaseModel):
+    agentId: str
+    role: str
+    assignedChairId: str
+
+class InitializationData(BaseModel):
+    agents: List[AgentInitInfo]
+    zones: List[str]
+
+class UserQuestionData(BaseModel):
+    targetAgentId: str
+    question: str
+
+class InitEventRequest(BaseModel):
+    type: Literal["daystarted"]
     agent_id: str
     timestamp: float
-    data: Dict[str, Any]
+    data: InitializationData
+
+class QuestionEventRequest(BaseModel):
+    type: Literal["ask_question"]
+    agent_id: str
+    timestamp: float
+    data: UserQuestionData
+
+class ActionRequestEvent(BaseModel):
+    type: Literal["request_commands"]
+    agent_id: str
+    timestamp: float
+    data: Optional[Dict[str, Any]] = None 
+
+IncomingEvent = Union[InitEventRequest, QuestionEventRequest, ActionRequestEvent]
+
+
+
+class NetworkCommand(BaseModel):
+    type: str
+    target_id: str
+    duration: float
+    thought: str
+
+class BackendResponse(BaseModel):
+    type: str = "commands"
+    agent_id: str
+    answer: str = ""
+    commands: List[NetworkCommand]
