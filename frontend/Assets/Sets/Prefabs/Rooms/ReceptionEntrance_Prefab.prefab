@@ -9879,9 +9879,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67c3905ef46584c6a8faa45b0c38d942, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OfficeChair
-  seatType: 0
-  approachPoint: {fileID: 0}
-  sitPoint: {fileID: 0}
+  approachPoint: {fileID: 8194847292340035418}
+  sitPoint: {fileID: 4213221584548977459}
   chairMesh: {fileID: 2515426978877742151}
   slideDistance: 0.5
   slideSpeed: 2.5
@@ -9899,7 +9898,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0258f027fc8e488594a7cd8f3130e735, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationEntity
-  baseType: reception_chair
+  baseType: rec
+  manualIdentifier: reception_chair
 --- !u!1 &2683909296084437560
 GameObject:
   m_ObjectHideFlags: 0

@@ -14,6 +14,13 @@ namespace Simulation.Network
     }
 
     [Serializable]
+    public class ActionRequestData
+    {
+        public string current_location;
+        public string current_time;
+    }
+
+    [Serializable]
     public class InitializationData
     {
         public List<AgentInitInfo> agents;

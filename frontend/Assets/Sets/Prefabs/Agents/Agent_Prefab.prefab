@@ -418,7 +418,7 @@ NavMeshAgent:
   m_GameObject: {fileID: 8302457952313312516}
   m_Enabled: 1
   m_AgentTypeID: 0
-  m_Radius: 0.5
+  m_Radius: 0.3
   m_Speed: 3.5
   m_Acceleration: 8
   avoidancePriority: 50
@@ -446,6 +446,7 @@ MonoBehaviour:
   anim: {fileID: 4542580161833081136}
   walkSpeed: 1.5
   rotationSpeed: 8
+  isAIControlled: 1
 --- !u!114 &6259895729634610107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -459,6 +460,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationEntity
   baseType: agent
+  manualIdentifier: 
 --- !u!136 &2125285619017338757
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -478,7 +480,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.5
+  m_Radius: 0.3
   m_Height: 3
   m_Direction: 1
   m_Center: {x: 0, y: 1, z: 0}

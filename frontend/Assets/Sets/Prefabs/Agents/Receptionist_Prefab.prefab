@@ -71,9 +71,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc83e70e243a948dc91051aec19b4c58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AgentController
-  anim: {fileID: 0}
+  anim: {fileID: 2281824719355256633}
   walkSpeed: 1.5
   rotationSpeed: 8
+  isAIControlled: 1
 --- !u!114 &6259895729634610107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -87,6 +88,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationEntity
   baseType: agent
+  manualIdentifier: 
 --- !u!136 &2125285619017338757
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -117,7 +119,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8302457952313312516}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 732f6704a1b04c44a41d7d58c26cd722, type: 3}
   m_Name: 

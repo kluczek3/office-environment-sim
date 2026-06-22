@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum CommandType { Move, Interact, Wait }
+public enum CommandType {Interact, Wait }
 
 [System.Serializable]
 public class AgentCommand

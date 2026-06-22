@@ -10,6 +10,7 @@ using Simulation.Network;
 public class WebSocketClientManager : MonoBehaviour
 {
     public static WebSocketClientManager Instance { get; private set; }
+    public bool IsConnected => webSocket != null && webSocket.State == WebSocketState.Open;
 
     [SerializeField] private bool useMockData = true;
     [SerializeField] private string serverUri = "ws://127.0.0.1:8080/ws/simulation/";
@@ -29,10 +30,6 @@ public class WebSocketClientManager : MonoBehaviour
         if (useMockData)
         {
             Invoke(nameof(TriggerHardcodedMock), 1.5f);
-        }
-        else
-        {
-            _ = ConnectAsync();
         }
     }
 
@@ -61,7 +58,7 @@ public class WebSocketClientManager : MonoBehaviour
         }
     }
 
-    private async Task ConnectAsync()
+    public async Task ConnectAsync()
     {
         cts = new CancellationTokenSource();
         webSocket = new ClientWebSocket();
@@ -74,6 +71,8 @@ public class WebSocketClientManager : MonoBehaviour
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
                 string json = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 lock (queueLock) { messageQueue.Enqueue(json); }
+                Debug.Log(result);
+                Debug.Log(json);
             }
         }
         catch (Exception ex) 
@@ -117,6 +116,15 @@ public class WebSocketClientManager : MonoBehaviour
             BackendResponse package = JsonUtility.FromJson<BackendResponse>(json);
             if (package == null) return;
             
+            if (package.type == "global_event")
+            {
+                foreach (var controller in FindObjectsOfType<AgentController>())
+                {
+                    controller.ForceInterruptAndRedirect();
+                }
+                return;
+            }
+
             if (package.type == "qa_response")
             {
                 if (QAInterfaceManager.Instance != null)
@@ -129,11 +137,11 @@ public class WebSocketClientManager : MonoBehaviour
             SimulationEntity agentEntity = SimulationRegistry.GetEntity(package.agent_id);
             if (agentEntity == null) return;
 
-            AgentController controller = agentEntity.GetComponent<AgentController>();
-            if (controller == null) return;
+            AgentController controller1 = agentEntity.GetComponent<AgentController>();
+            if (controller1 == null) return;
 
             if (package.commands != null && package.commands.Count > 0)
-                controller.ReceiveCommands(package.commands);
+                controller1.ReceiveCommands(package.commands);
         }
         catch (Exception ex) 
         { 

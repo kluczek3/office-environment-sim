@@ -5135,6 +5135,14 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 7063712606731159555, guid: 99bfc57f3339944e8b98050332ceb85f, type: 3}
+      propertyPath: baseType
+      value: boss_chair
+      objectReference: {fileID: 0}
+    - target: {fileID: 7063712606731159555, guid: 99bfc57f3339944e8b98050332ceb85f, type: 3}
+      propertyPath: manualIdentifier
+      value: boss_chair
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

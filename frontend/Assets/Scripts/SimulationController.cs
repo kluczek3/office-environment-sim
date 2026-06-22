@@ -10,8 +10,12 @@ public class SimulationController : MonoBehaviour
     [SerializeField] private Transform[] spawnPoints;
     [SerializeField] private int agentCount = 3;
 
-    private void Start()
+    private System.Collections.IEnumerator Start()
     {
+        while (!WebSocketClientManager.Instance.IsConnected)
+        {
+            yield return null;
+        }
         InitializeEnvironment();
     }
 
@@ -45,17 +49,27 @@ public class SimulationController : MonoBehaviour
                 info.role = "Worker";
                 info.assignedChairId = "office_chair_" + i;
             }
-
             agentInfos.Add(info);
         }
 
         Transform recSpawn = spawnPoints[0];
         GameObject recObj = Instantiate(receptionistPrefab, recSpawn.position, recSpawn.rotation);
+        
         SimulationEntity recEntity = recObj.GetComponent<SimulationEntity>();
         recEntity.OverrideIdentifier("agent_reception");
-        StartCoroutine(RunReceptionist(recObj));
 
-        List<string> zones = new List<string> { "conference_0", "conference_1", "chill_0", "chill_1", "chill_2" };
+        AgentController recController = recObj.GetComponent<AgentController>();
+        if (recController != null)
+        {
+            recController.SetAIControlled(false);
+        }
+
+        List<string> zones = new List<string> 
+        { 
+            "chill_0", "chill_1", "chill_2", 
+            "toilet_0", "toilet_1", 
+            "boss_chair"
+        };
 
         UnityEventRequest<InitializationData> startEvent = new UnityEventRequest<InitializationData>();
         startEvent.type = "daystarted";
@@ -65,7 +79,8 @@ public class SimulationController : MonoBehaviour
 
         string json = JsonUtility.ToJson(startEvent);
         WebSocketClientManager.Instance.SendMessageToServer(json);
-        Debug.Log(json);
+
+        StartCoroutine(RunReceptionist(recObj));
     }
 
     private System.Collections.IEnumerator RunReceptionist(GameObject receptionist)
@@ -81,7 +96,6 @@ public class SimulationController : MonoBehaviour
 
         IInteractable interactable = chairEntity.GetComponent<IInteractable>();
         TargetPose pose = interactable.Reserve(controller);
-
         yield return StartCoroutine(controller.MoveToDestination(pose.Position));
         controller.Interact(interactable, chairEntity);
     }

@@ -20,8 +20,18 @@ public class Blackboard : MonoBehaviour, IInteractable
     {
         presenter = agent;
         agent.NavAgent.enabled = false;
-        agent.transform.position = presentationPoint.position;
+        
+        Vector3 correctPosition = new Vector3(
+            presentationPoint.position.x, 
+            agent.transform.position.y, 
+            presentationPoint.position.z
+        );
+    
+        agent.transform.position = correctPosition;
+        
         agent.transform.rotation = presentationPoint.rotation;
+        
+        
         
         if (agent.Anim != null) 
         {
